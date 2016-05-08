@@ -1,0 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Apr 30 20:25:37 2016
+
+@author: pi
+"""
+
+import RPi.GPIO as GPIO
+import time
+
+
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(25, GPIO.OUT)
+
+GPIO.output(25, GPIO.HIGH)

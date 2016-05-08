@@ -13,6 +13,7 @@ import time
 import RPi.GPIO as GPIO
 import Tkinter as tk
 import sys
+import smbus
 
 wheelRadius = 3.5 #cm
 pi = 3.14159
@@ -31,6 +32,49 @@ rightpinNumber = 20
 
 GPIO.setup(leftpinNumber, GPIO.IN)
 GPIO.setup(rightpinNumber, GPIO.IN)
+
+def returnBearing():
+    bus = smbus.SMBus(1)
+    address = 0x1e
+        
+    def read_byte(adr):
+        return bus.read_byte_data(address, adr)
+    
+    def read_word(adr):
+        high = bus.read_byte_data(address, adr)
+        low = bus.read_byte_data(address, adr+1)
+        val = (high << 8) + low
+        return val
+    
+    def read_word_2c(adr):
+        val = read_word(adr)
+        if (val >= 0x8000):
+            return -((65535 - val) + 1)
+        else:
+            return val
+    
+    def write_byte(adr, value):
+        bus.write_byte_data(address, adr, value)
+    
+    write_byte(0, 0b01110000) # Set to 8 samples @ 15Hz
+    write_byte(1, 0b00100000) # 1.3 gain LSb / Gauss 1090 (default)
+    write_byte(2, 0b00000000) # Continuous sampling
+    
+    scale = 0.92
+
+    #x_offset = -10
+    #y_offset = 10
+    
+    x_out = read_word_2c(3) * scale
+    y_out = read_word_2c(7) * scale
+    z_out = read_word_2c(5) * scale
+    
+    bearing  = math.atan2(y_out, x_out) 
+    if (bearing < 0):
+        bearing += 2 * math.pi
+    
+    return math.degrees(bearing)
+
 
 def wheelCount(sampleLength):
     leftCount = 0
@@ -101,17 +145,30 @@ def forwardSetDistance(distance):
     return
 
 
-def rotate90Clock():    
-    distance = 50
-    startTime = time.time()
-    robot.set_motors(0.9,0,0.9,1)
-    distanceSoFarLeft = 0.0
+def rotate90Clock():
+    errorMargin = 5
+    finalBearing = returnBearing() + 90
+    if finalBearing > 360:
+        finalBearing = finalBearing - 360
 
-    while distance - distanceSoFarLeft > 0:
-        speedLeft, speedRight = getWheelCount()
-        speed = speedLeft
-        distanceSoFarLeft = (time.time()-startTime) * speed
-        print(distanceSoFarLeft)
+    robot.set_motors(0.9,0,0.9,1)
+
+    while finalBearing - returnBearing() > errorMargin:
+        time.sleep(0.01)
+        #print(returnBearing())
+    robot.stop()
+    return
+
+def rotate90CounterClock():
+    finalBearing = returnBearing() + 90
+    if finalBearing > 360:
+        finalBearing = finalBearing - 360
+
+    robot.set_motors(0.9,1,0.9,0)
+
+    while finalBearing - returnBearing() > 5:
+        time.sleep(0.01)
+        #print(returnBearing())
     robot.stop()
     return
     
@@ -136,9 +193,12 @@ def onKeyPress(event):
         forwardSetDistance(100)
     if event.char =='c':
         rotate90Clock()
-
-    if event.char == 'c':
-        print (getWheelCount())
+    if event.char =='x':
+        rotate90CounterClock()
+    if event.char == 'w':
+        print (getWheelCount())       
+    if event.char == 'd':
+        print (returnBearing())
     if event.char == 'q':
         quitApp()
         

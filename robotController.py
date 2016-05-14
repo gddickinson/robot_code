@@ -20,10 +20,7 @@ import math
 import time
 
 #######################################################################
-wheelRadius = 3.5 #cm
-pi = 3.14159
-wheelCircumference = 2 * pi * wheelRadius
-wheelEncoderPins = 20
+
 
 batteryVoltage = 12
 motorVoltage = 6
@@ -236,8 +233,13 @@ class Robot(object):
         self.position = room.getCenterPosition()
         self.targetPosition = 0.0
         self.frontSonar = 0.0
+        self.leftDownSonar = 0.0
+        self.rightDownSonar = 0.0
         self.leftWheelSpeed = 0.0
         self.rightWheelSpeed = 0.0
+        self.targetLeftWheelSpeed = 0.0
+        self.targetRightWheelSpeed = 0.0
+
 
     def getRobotPosition(self):
         """
@@ -292,15 +294,6 @@ class Robot(object):
 
         direction: integer representing an angle in degrees
         """
-
-        try:
-            GPIO.setmode(GPIO.BCM)
-            leftpinNumber = 21
-            rightpinNumber = 20
-            GPIO.setup(leftpinNumber, GPIO.IN)
-            GPIO.setup(rightpinNumber, GPIO.IN)
-        except:
-            print("No magnetometer attached!")
         
         def returnBearing():
             bus = smbus.SMBus(1)
@@ -346,6 +339,72 @@ class Robot(object):
 
         self.currentDirection = returnBearing()
 
+    def updateCurrentWheelSpeed(self):
+        """
+        Update wheel speed of the piRobot to encoder readings.
+
+        speed float in cm/s
+        """
+
+    try:
+        GPIO.setmode(GPIO.BCM)
+        leftpinNumber = 21
+        rightpinNumber = 20
+        GPIO.setup(leftpinNumber, GPIO.IN)
+        GPIO.setup(rightpinNumber, GPIO.IN)
+    except:
+        print("No encoders detected!")
+
+
+        def wheelCount(sampleLength, leftpinNumber = 21, rightpinNumber = 20):
+            leftCount = 0
+            rightCount = 0
+            
+            leftinputValue = GPIO.input(leftpinNumber)
+            rightinputValue = GPIO.input(rightpinNumber)
+            endTime = time.time() + sampleLength
+        
+            leftFlag = leftinputValue
+            rightFlag = rightinputValue
+        
+            while time.time() < endTime:
+                if (leftFlag == leftinputValue):
+                    leftFlag = leftinputValue
+                else:
+                    leftCount = leftCount +1
+                    leftFlag = leftinputValue
+                    
+                if (rightFlag == rightinputValue):
+                    rightFlag = rightinputValue
+                else:
+                    rightCount = rightCount +1
+                    rightFlag = rightinputValue
+                
+                leftinputValue = GPIO.input(leftpinNumber)
+                rightinputValue = GPIO.input(rightpinNumber)
+                #time.sleep(.001)    
+            
+            return leftCount,rightCount
+
+
+        wheelRadius = 3.5 #cm
+        pi = 3.14159
+        wheelCircumference = 2 * pi * wheelRadius
+        wheelEncoderPins = 20
+
+        sampleLength = 0.1 #100ms
+        conversionFactor = (wheelCircumference / (wheelEncoderPins*2))/ sampleLength
+        leftsample1,rightsample1 = wheelCount(sampleLength)
+        leftsample2, rightsample2 = wheelCount(sampleLength)
+        leftsample3, rightsample3 = wheelCount(sampleLength)
+        leftsample4, rightsample4 = wheelCount(sampleLength) 
+        leftaverageSample = (float(leftsample1+leftsample2+leftsample3+leftsample4)/4)
+        rightaverageSample = (float(rightsample1+rightsample2+rightsample3+rightsample4)/4)
+        
+        #converted to cm/s
+        self.leftWheelSpeed = leftaverageSample * conversionFactor
+        self.rightWheelSpeed = rightaverageSample * conversionFactor
+        
 
     def updatePositionAndIssueCommands(self):
         """
@@ -367,12 +426,11 @@ class StandardRobot(Robot):
     direction; when it would hit a wall, it *instead* chooses a new direction
     randomly.
     """
-    def updatePositionAndClean(self):
+    def updatePositionAndIssueCommands(self):
         """
-        Simulate the raise passage of a single time-step.
+        Run for a single time-step.
 
-        Move the robot to a new position and mark the tile it is on as having
-        been cleaned.
+        Update sensor readings, update map, issue commands
         """
         currentPosition = self.getRobotPosition()
         currentDirection = self.getRobotDirection()

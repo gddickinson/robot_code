@@ -88,6 +88,33 @@ class RectangularRoom(object):
         self.y = int(height)
         self.posBlockedX = []
         self.posBlockedY = []
+
+
+    def saveRoom(self):
+        """
+        Save room data to file
+        """
+        path = "/home/pi/robotData/"
+        fileName = "mapData.txt"
+        filename = path + fileName
+        blockedPositions = np.vstack((self.posBlockedX,self.posBlockedY))
+        blockedPositions = np.transpose(blockedPositions)        
+        np.savetxt(filename, blockedPositions, delimiter=',')
+    
+    def loadRoom(self):
+        """
+        Load room data from file
+        """
+        path = "/home/pi/robotData/"
+        fileName = "mapData.txt"
+        filename = path + fileName
+
+        x = np.loadtxt(filename, delimiter = ",", usecols=(0,))
+        y = np.loadtxt(filename, delimiter = ",", usecols=(1,))
+
+        self.posBlockedX = x
+        self.posBlockedY = y    
+        
     
     def blockTileAtPosition(self, pos):
         """

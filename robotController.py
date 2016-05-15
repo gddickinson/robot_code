@@ -133,6 +133,24 @@ class RectangularRoom(object):
                 return True
                             
         return False
+
+    def removeBlockedTile(self, pos):
+                
+        x = int(pos.getX())
+        y = int(pos.getY()) 
+
+        ansX=[]
+        ansY=[]
+
+        for i in range(len(self.posBlockedX)):
+           if x == self.posBlockedX[i] and y == self.posBlockedY[i]:
+               pass
+           else:
+               ansX.append(self.posBlockedX[i])
+               ansY.append(self.posBlockedY[i])
+      
+        self.posBlockedX = ansX
+        self.posBlockedY = ansY
     
     def getNumTiles(self):
         """
@@ -258,6 +276,31 @@ class Robot(object):
         """
         return self.currentDirection
 
+    def getRobotTargetDirection(self):
+        """
+        Return the direction of the robot.
+
+        returns: an integer d giving the direction of the robot as an angle in
+        degrees, 0 <= d < 360.
+        """
+        return self.currentTargetDirection
+
+    def setRobotTargetDirection(self, direction):
+        """
+        Set the target direction of the robot.
+
+        """ 
+        self.targetDirection = direction
+
+    def setRobotTargetPosition(self, position):
+        """
+        Set the target position of the robot to POSITION.
+
+        position: a Position object.
+        """
+        self.targetPosition = position
+
+
     def getForwardSonar(self):
         """        
         Return the value of the forward facing range finder
@@ -346,14 +389,14 @@ class Robot(object):
         speed float in cm/s
         """
 
-    try:
-        GPIO.setmode(GPIO.BCM)
-        leftpinNumber = 21
-        rightpinNumber = 20
-        GPIO.setup(leftpinNumber, GPIO.IN)
-        GPIO.setup(rightpinNumber, GPIO.IN)
-    except:
-        print("No encoders detected!")
+        try:
+            GPIO.setmode(GPIO.BCM)
+            leftpinNumber = 21
+            rightpinNumber = 20
+            GPIO.setup(leftpinNumber, GPIO.IN)
+            GPIO.setup(rightpinNumber, GPIO.IN)
+        except:
+            print("No encoders detected!")
 
 
         def wheelCount(sampleLength, leftpinNumber = 21, rightpinNumber = 20):
@@ -405,6 +448,13 @@ class Robot(object):
         self.leftWheelSpeed = leftaverageSample * conversionFactor
         self.rightWheelSpeed = rightaverageSample * conversionFactor
         
+
+    def addBlockedPositionToRoom(self, position):
+        """
+        Adds blocked POSITION to current room list
+        """
+        self.room.blockTileAtPosition(position)
+
 
     def updatePositionAndIssueCommands(self):
         """

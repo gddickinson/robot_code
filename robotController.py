@@ -18,21 +18,9 @@ import smbus
 import pylab
 import math
 import time
+#import cv2
 
 #######################################################################
-
-
-batteryVoltage = 12
-motorVoltage = 6
-
-try:
-    piRobot= RRB3(batteryVoltage, motorVoltage)
-except:
-    print ("No robot found!")
-
-########################################################################
-
-
 class Position(object):
     """
     A Position represents a location in a two-dimensional room.
@@ -236,20 +224,26 @@ class Robot(object):
     Subclasses of Robot should provide movement strategies by implementing
     updatePositionAndClean(), which simulates a single time-step.
     """
-    def __init__(self, room, piRobot):
+    def __init__(self, room):
         """
         Initializes a Robot in the specified room. The robot initially is set to be stationary in the center of the room. 
 
         room:  a RectangularRoom object.
         speed: a float (speed > 0)
         """
-        self.piRobot= piRobot
+        batteryVoltage = 12
+        motorVoltage = 6
+
+        try:
+            self.piRobot= RRB3(batteryVoltage, motorVoltage)
+        except:
+            print ("No robot found!")
         self.room = room
         self.targetSpeed = 0.0
         self.currentDirection = 0.0
         self.targetDirection = 0.0
         self.position = room.getCenterPosition()
-        self.targetPosition = 0.0
+        self.targetPosition = room.getCenterPosition()
         self.frontSonar = 0.0
         self.leftDownSonar = 0.0
         self.rightDownSonar = 0.0
@@ -257,7 +251,7 @@ class Robot(object):
         self.rightWheelSpeed = 0.0
         self.targetLeftWheelSpeed = 0.0
         self.targetRightWheelSpeed = 0.0
-
+        self.updateAll()
 
     def getRobotPosition(self):
         """
@@ -300,6 +294,12 @@ class Robot(object):
         """
         self.targetPosition = position
 
+    def getRobotTargetPosition(self):
+        """
+        Get the target position of the robot 
+
+        """
+        return self.targetPosition
 
     def getForwardSonar(self):
         """        
@@ -322,6 +322,11 @@ class Robot(object):
         """
         return self.rightWheelSpeed
 
+    def setRobotTargetSpeed(self, speed):
+        """
+        Set target speed
+        """
+        self.targetSpeed = speed
 
     def setRobotPosition(self, position):
         """
@@ -330,6 +335,16 @@ class Robot(object):
         position: a Position object.
         """
         self.position = position
+
+    def updateCurrentPosition(self, commandTime):
+        """
+        Update robot position to predicted position based on speed, direction and time
+        """
+
+        newX = 0.0
+        newY = 0.0
+        newPosition = Position(newX, newY)
+        self.setRobotPosition(newPosition)
 
     def updateCurrentDirection(self):
         """
@@ -448,6 +463,9 @@ class Robot(object):
         self.leftWheelSpeed = leftaverageSample * conversionFactor
         self.rightWheelSpeed = rightaverageSample * conversionFactor
         
+    def updateFrontSonar(self):
+        self.frontSonar = self.piRobot.get_distance()
+
 
     def addBlockedPositionToRoom(self, position):
         """
@@ -455,8 +473,27 @@ class Robot(object):
         """
         self.room.blockTileAtPosition(position)
 
+    def updateAll(self):
+        self.updateFrontSonar()
+        self.updateCurrentDirection()
+        self.updateCurrentWheelSpeed()
+        self.updateCurrentPosition(time.time())
 
-    def updatePositionAndIssueCommands(self):
+
+    def setMotorSpeed(self, leftSpeed, leftDirection, rightSpeed, rightDirection, duration = 100):
+        startTime = time.time()         
+        self.piRobot.set_motors(leftSpeed,leftDirection,rightSpeed,rightDirection)
+        while startTime + duration > time.time():
+            pass
+        self.piRobot.stop()
+
+    def printCurrentPosition(self):
+        return "(%0.2f, %0.2f)" % (self.position.x, self.position.y)
+
+    def printTargetPosition(self):
+        return "(%0.2f, %0.2f)" % (self.targetPosition.x, self.targetPosition.y)
+
+    def runTimeStep(self):
         """
         Run for a single time-step. Update sensor readings, update map, issue commands
         
@@ -476,29 +513,21 @@ class StandardRobot(Robot):
     direction; when it would hit a wall, it *instead* chooses a new direction
     randomly.
     """
-    def updatePositionAndIssueCommands(self):
+    def runTimeStep(self, targetPosition, speed):
         """
         Run for a single time-step.
 
         Update sensor readings, update map, issue commands
         """
-        currentPosition = self.getRobotPosition()
-        currentDirection = self.getRobotDirection()
-        currentSpeed = self.speed
+        self.setRobotTargetPosition(targetPosition)
+        self.setRobotTargetSpeed(speed)
+        self.updateAll()
+
+
+
         
-        newPosition = currentPosition.getNewPosition(currentDirection,currentSpeed)
-        if self.room.isPositionInRoom(newPosition) == True:
-            self.setRobotPosition(newPosition)
-            self.room.cleanTileAtPosition(newPosition)
-            return
-        else:
-            while self.room.isPositionInRoom(newPosition) == False:
-                self.setRobotDirection(360*(random.random()))
-                newPosition = currentPosition.getNewPosition(self.getRobotDirection(),currentSpeed)
-            self.setRobotPosition(newPosition)
-            self.room.cleanTileAtPosition(newPosition)
-            return
 
-
-
+###############################  TEST    ######################################
+room1 = RectangularRoom()
+testRobot = StandardRobot(room1)
 

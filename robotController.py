@@ -20,6 +20,9 @@ import math
 import time
 #import cv2
 
+
+#room squares 1cmx1cm
+
 #######################################################################
 class Position(object):
     """
@@ -75,7 +78,7 @@ class RectangularRoom(object):
     A room has a width and a height and contains (width * height) tiles. At any
     particular time, each of these tiles is either open or blocked.
     """
-    def __init__(self, width = 100, height = 100):
+    def __init__(self, width = 10000, height = 10000):
         """
         Initializes a rectangular room with the specified width and height.
 
@@ -278,7 +281,7 @@ class Robot(object):
         self.rightWheelSpeed = 0.0
         self.targetLeftWheelSpeed = 0.0
         self.targetRightWheelSpeed = 0.0
-        self.updateAll()
+        self.updateAllSensors()
 
     def getRobotPosition(self):
         """
@@ -304,7 +307,7 @@ class Robot(object):
         returns: an integer d giving the direction of the robot as an angle in
         degrees, 0 <= d < 360.
         """
-        return self.currentTargetDirection
+        return self.targetDirection
 
     def setRobotTargetDirection(self, direction):
         """
@@ -362,6 +365,7 @@ class Robot(object):
         position: a Position object.
         """
         self.position = position
+
 
     def updateCurrentPosition(self, commandTime):
         """
@@ -500,12 +504,11 @@ class Robot(object):
         """
         self.room.blockTileAtPosition(position)
 
-    def updateAll(self):
+    def updateAllSensors(self):
         self.updateFrontSonar()
         self.updateCurrentDirection()
         self.updateCurrentWheelSpeed()
         self.updateCurrentPosition(time.time())
-
 
     def setMotorSpeed(self, leftSpeed, leftDirection, rightSpeed, rightDirection, duration = 100):
         startTime = time.time()         
@@ -514,11 +517,58 @@ class Robot(object):
             pass
         self.piRobot.stop()
 
+    def rotateLeft(self, time = 1, speed =0.9):
+        """
+        turn robot left
+        """
+        self.piRobot.left(time, speed)
+
+    def rotateRight(self, time = 1, speed =0.9):
+        """
+        turn robot right
+        """
+        self.piRobot.right(time, speed)
+
+
+    def updateDirection(self, speed=0.9):
+        self.updateAllSensors()
+        if self.getRobotDirection() > self.getRobotTargetDirection():
+            self.piRobot.stop()
+            while self.getRobotDirection() > self.getRobotTargetDirection()+1:
+                self.rotateLeft(1, speed)
+                self.updateAllSensors()
+        if self.getRobotDirection() < self.getRobotTargetDirection():
+            self.piRobot.stop()
+            while self.getRobotDirection() > self.getRobotTargetDirection()+1:
+                self.rotateRight(1, speed)
+                updateAllSensors()        
+        self.piRobot.stop()
+
     def printCurrentPosition(self):
         return "(%0.2f, %0.2f)" % (self.position.x, self.position.y)
 
     def printTargetPosition(self):
         return "(%0.2f, %0.2f)" % (self.targetPosition.x, self.targetPosition.y)
+
+    def rotateClock(self, degrees=90, speed=0.9):
+        if degrees > 360:
+            degrees = 360
+        self.updateAllSensors()
+        startDirection = self.getRobotDirection()
+        targetDirection = startDirection + degrees
+        if targetDirection > 360:
+            targetDirection = targetDirection - 360
+        self.setRobotTargetDirection(targetDirection)
+        self.updateDirection(speed)
+        
+
+    def initiateRobot(self):
+        """
+        Rotate robot through 360 degrees and add detected blocked points to map        
+        
+        """
+        pass
+        
 
     def runTimeStep(self):
         """
@@ -548,7 +598,7 @@ class StandardRobot(Robot):
         """
         self.setRobotTargetPosition(targetPosition)
         self.setRobotTargetSpeed(speed)
-        self.updateAll()
+        self.updateAllSensors()
 
 
 
@@ -558,3 +608,5 @@ class StandardRobot(Robot):
 room1 = RectangularRoom()
 testRobot = StandardRobot(room1)
 
+
+#testRobot.rotateClock()

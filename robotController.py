@@ -329,6 +329,7 @@ class Robot(object):
         Get the target position of the robot 
 
         """
+        self.updateAllSensors()
         return self.targetPosition
 
     def getForwardSonar(self):
@@ -336,6 +337,7 @@ class Robot(object):
         Return the value of the forward facing range finder
         
         """
+        self.updateAllSensors()
         return self.frontSonar
 
     def getLeftWheelSpeed(self):
@@ -343,6 +345,7 @@ class Robot(object):
         Return the value of the left wheel encoder
         
         """
+        self.updateAllSensors()
         return self.leftWheelSpeed
 
     def getRightWheelSpeed(self):
@@ -350,6 +353,7 @@ class Robot(object):
         Return the value of the left wheel encoder
         
         """
+        self.updateAllSensors()
         return self.rightWheelSpeed
 
     def setRobotTargetSpeed(self, speed):
@@ -495,6 +499,9 @@ class Robot(object):
         self.rightWheelSpeed = rightaverageSample * conversionFactor
         
     def updateFrontSonar(self):
+        """
+        Updates front sonar reading
+        """
         self.frontSonar = self.piRobot.get_distance()
 
 
@@ -505,17 +512,19 @@ class Robot(object):
         self.room.blockTileAtPosition(position)
 
     def updateAllSensors(self):
+        """
+        Refresh all sensor and position variables
+        """
         self.updateFrontSonar()
         self.updateCurrentDirection()
         self.updateCurrentWheelSpeed()
         self.updateCurrentPosition(time.time())
 
-    def setMotorSpeed(self, leftSpeed, leftDirection, rightSpeed, rightDirection, duration = 100):
-        startTime = time.time()         
+    def setMotorSpeed(self, leftSpeed, leftDirection, rightSpeed, rightDirection):
+        """
+        Set left and right motor speed and direction
+        """
         self.piRobot.set_motors(leftSpeed,leftDirection,rightSpeed,rightDirection)
-        while startTime + duration > time.time():
-            pass
-        self.piRobot.stop()
 
     def rotateLeft(self, time = 1, speed =0.9):
         """
@@ -529,20 +538,64 @@ class Robot(object):
         """
         self.piRobot.right(time, speed)
 
+    def getAverageSpeed(self):
+        """
+        Return average of left and right wheel speeds
+        """
+        Speed1=(self.getLeftWheelSpeed()+self.getRightWheelSpeed())/2  
+        Speed2=(self.getLeftWheelSpeed()+self.getRightWheelSpeed())/2 
+        averageSpeed = (Speed1+Speed2)/2
+        print("forward speed = ", averageSpeed)
 
-    def updateDirection(self, speed=0.9):
+        return averageSpeed
+        
+
+    def obstacleDetection(self):
+        if self.getForwardSonar() <= 15.0:
+            print ("Obstacle detected")
+            return True
+        else:
+            return False
+
+    def moveLinearDistance(self,distance, speed = 0.5, direction = 0):
+        """
+        Move robot forward DISTANCE as measured by wheel encoders 
+        """
         self.updateAllSensors()
-        if self.getRobotDirection() > self.getRobotTargetDirection():
-            self.piRobot.stop()
-            while self.getRobotDirection() > self.getRobotTargetDirection()+1:
-                self.rotateLeft(1, speed)
-                self.updateAllSensors()
-        if self.getRobotDirection() < self.getRobotTargetDirection():
-            self.piRobot.stop()
-            while self.getRobotDirection() > self.getRobotTargetDirection()+1:
-                self.rotateRight(1, speed)
-                updateAllSensors()        
+        startTime = time.time()
+        sampleStartTime = startTime        
+        distanceLeft = distance
+        sampleList = []
+        if direction ==0:
+            if self.obstacleDetection():
+                self.piRobot.stop()            
+                return 
+
+        self.setMotorSpeed(speed,direction,speed,direction)
+
+        while distanceLeft > 0.0:
+            if direction == 0:            
+                if self.obstacleDetection():
+                    self.piRobot.stop()            
+                    return 
+
+            self.updateAllSensors()
+            distanceSample = (time.time()-sampleStartTime)*self.getAverageSpeed()
+            distanceLeft = distanceLeft - distanceSample
+            sampleList.append(distanceSample)
+            sampleStartTime = time.time()
+            print(distanceLeft)
+            print(distanceSample)
+
+                             
         self.piRobot.stop()
+
+
+    def stop(self):
+        self.piRobot.stop()
+        self.setRobotTargetSpeed(0.0)
+        self.setRobotTargetDirection(self.getRobotDirection())
+        
 
     def printCurrentPosition(self):
         return "(%0.2f, %0.2f)" % (self.position.x, self.position.y)
@@ -550,17 +603,19 @@ class Robot(object):
     def printTargetPosition(self):
         return "(%0.2f, %0.2f)" % (self.targetPosition.x, self.targetPosition.y)
 
-    def rotateClock(self, degrees=90, speed=0.9):
-        if degrees > 360:
-            degrees = 360
+    def rotateClock(self, degrees=90.0, speed=0.9):
+        if degrees > 360.0:
+            degrees = 360.0
         self.updateAllSensors()
         startDirection = self.getRobotDirection()
         targetDirection = startDirection + degrees
-        if targetDirection > 360:
-            targetDirection = targetDirection - 360
-        self.setRobotTargetDirection(targetDirection)
-        self.updateDirection(speed)
-        
+        if targetDirection > 360.0:
+            targetDirection = targetDirection - 360.0
+
+        while self.getRobotDirection() < targetDirection():
+            self.rotateRight(0.2,speed)
+        self.updateAllSensors()
+        self.piRobot.stop()
 
     def initiateRobot(self):
         """

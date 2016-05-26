@@ -281,7 +281,8 @@ class Robot(object):
         self.rightWheelSpeed = 0.0
         self.targetLeftWheelSpeed = 0.0
         self.targetRightWheelSpeed = 0.0
-        self.updateAllSensors()
+        self.updateCurrentDirection()
+                
 
     def getRobotPosition(self):
         """
@@ -298,6 +299,7 @@ class Robot(object):
         returns: an integer d giving the direction of the robot as an angle in
         degrees, 0 <= d < 360.
         """
+        
         return self.currentDirection
 
     def getRobotTargetDirection(self):
@@ -307,6 +309,7 @@ class Robot(object):
         returns: an integer d giving the direction of the robot as an angle in
         degrees, 0 <= d < 360.
         """
+        
         return self.targetDirection
 
     def setRobotTargetDirection(self, direction):
@@ -329,7 +332,7 @@ class Robot(object):
         Get the target position of the robot 
 
         """
-        self.updateAllSensors()
+        
         return self.targetPosition
 
     def getForwardSonar(self):
@@ -337,7 +340,7 @@ class Robot(object):
         Return the value of the forward facing range finder
         
         """
-        self.updateAllSensors()
+        
         return self.frontSonar
 
     def getLeftWheelSpeed(self):
@@ -345,7 +348,7 @@ class Robot(object):
         Return the value of the left wheel encoder
         
         """
-        self.updateAllSensors()
+        
         return self.leftWheelSpeed
 
     def getRightWheelSpeed(self):
@@ -353,7 +356,7 @@ class Robot(object):
         Return the value of the left wheel encoder
         
         """
-        self.updateAllSensors()
+        
         return self.rightWheelSpeed
 
     def setRobotTargetSpeed(self, speed):
@@ -381,6 +384,7 @@ class Robot(object):
         newPosition = Position(newX, newY)
         self.setRobotPosition(newPosition)
 
+
     def updateCurrentDirection(self):
         """
         Update the direction of the piRobot to magnetometer bearing.
@@ -388,49 +392,18 @@ class Robot(object):
         direction: integer representing an angle in degrees
         """
         
-        def returnBearing():
-            bus = smbus.SMBus(1)
-            address = 0x1e
-                
-            def read_byte(adr):
-                return bus.read_byte_data(address, adr)
-            
-            def read_word(adr):
-                high = bus.read_byte_data(address, adr)
-                low = bus.read_byte_data(address, adr+1)
-                val = (high << 8) + low
-                return val
-            
-            def read_word_2c(adr):
-                val = read_word(adr)
-                if (val >= 0x8000):
-                    return -((65535 - val) + 1)
-                else:
-                    return val
-            
-            def write_byte(adr, value):
-                bus.write_byte_data(address, adr, value)
-            
-            write_byte(0, 0b01110000) # Set to 8 samples @ 15Hz
-            write_byte(1, 0b00100000) # 1.3 gain LSb / Gauss 1090 (default)
-            write_byte(2, 0b00000000) # Continuous sampling
-            
-            scale = 0.92
+        def getBearingFromDisc():
+            """
+            Load bearing data from file
+            """
+            path = "/home/pi/robotData/"
+            fileName = "bearingData.txt"
+            filename = path + fileName
+    
+            data = np.loadtxt(filename, delimiter = ",") #bearing,time
+            return float(data[0])
         
-            #x_offset = -10 #run calibration to set x offset
-            #y_offset = 10  #run calibration to set y offset
-            
-            x_out = read_word_2c(3) * scale
-            y_out = read_word_2c(7) * scale
-            #z_out = read_word_2c(5) * scale
-            
-            bearing  = math.atan2(y_out, x_out) 
-            if (bearing < 0):
-                bearing += 2 * math.pi
-            
-            return math.degrees(bearing)
-
-        self.currentDirection = returnBearing()
+        self.currentDirection = getBearingFromDisc()
 
     def updateCurrentWheelSpeed(self):
         """
@@ -438,65 +411,17 @@ class Robot(object):
 
         speed float in cm/s
         """
+        def getWheelSpeedFromDisc():
+            """
+            Load wheelSpeed data from file
+            """
+            path = "/home/pi/robotData/"
+            fileName = "wheelSpeedData.txt"
+            filename = path + fileName
+    
+            speeds = np.loadtxt(filename, delimiter = ",")  #left,right          
+            return float(speeds[0],speeds[1])
 
-        try:
-            GPIO.setmode(GPIO.BCM)
-            leftpinNumber = 21
-            rightpinNumber = 20
-            GPIO.setup(leftpinNumber, GPIO.IN)
-            GPIO.setup(rightpinNumber, GPIO.IN)
-        except:
-            print("No encoders detected!")
-
-
-        def wheelCount(sampleLength, leftpinNumber = 21, rightpinNumber = 20):
-            leftCount = 0
-            rightCount = 0
-            
-            leftinputValue = GPIO.input(leftpinNumber)
-            rightinputValue = GPIO.input(rightpinNumber)
-            endTime = time.time() + sampleLength
-        
-            leftFlag = leftinputValue
-            rightFlag = rightinputValue
-        
-            while time.time() < endTime:
-                if (leftFlag == leftinputValue):
-                    leftFlag = leftinputValue
-                else:
-                    leftCount = leftCount +1
-                    leftFlag = leftinputValue
-                    
-                if (rightFlag == rightinputValue):
-                    rightFlag = rightinputValue
-                else:
-                    rightCount = rightCount +1
-                    rightFlag = rightinputValue
-                
-                leftinputValue = GPIO.input(leftpinNumber)
-                rightinputValue = GPIO.input(rightpinNumber)
-                #time.sleep(.001)    
-            
-            return leftCount,rightCount
-
-
-        wheelRadius = 3.5 #cm
-        pi = 3.14159
-        wheelCircumference = 2 * pi * wheelRadius
-        wheelEncoderPins = 20
-
-        sampleLength = 0.1 #100ms
-        conversionFactor = (wheelCircumference / (wheelEncoderPins*2))/ sampleLength
-        leftsample1,rightsample1 = wheelCount(sampleLength)
-        leftsample2, rightsample2 = wheelCount(sampleLength)
-        leftsample3, rightsample3 = wheelCount(sampleLength)
-        leftsample4, rightsample4 = wheelCount(sampleLength) 
-        leftaverageSample = (float(leftsample1+leftsample2+leftsample3+leftsample4)/4)
-        rightaverageSample = (float(rightsample1+rightsample2+rightsample3+rightsample4)/4)
-        
-        #converted to cm/s
-        self.leftWheelSpeed = leftaverageSample * conversionFactor
-        self.rightWheelSpeed = rightaverageSample * conversionFactor
         
     def updateFrontSonar(self):
         """
@@ -511,14 +436,6 @@ class Robot(object):
         """
         self.room.blockTileAtPosition(position)
 
-    def updateAllSensors(self):
-        """
-        Refresh all sensor and position variables
-        """
-        self.updateFrontSonar()
-        self.updateCurrentDirection()
-        self.updateCurrentWheelSpeed()
-        self.updateCurrentPosition(time.time())
 
     def setMotorSpeed(self, leftSpeed, leftDirection, rightSpeed, rightDirection):
         """
@@ -526,13 +443,13 @@ class Robot(object):
         """
         self.piRobot.set_motors(leftSpeed,leftDirection,rightSpeed,rightDirection)
 
-    def rotateLeft(self, time = 1, speed =0.9):
+    def rotateLeft(self, time = 0.5, speed =0.9):
         """
         turn robot left
         """
         self.piRobot.left(time, speed)
 
-    def rotateRight(self, time = 1, speed =0.9):
+    def rotateRight(self, time = 0.5, speed =0.9):
         """
         turn robot right
         """
@@ -561,7 +478,7 @@ class Robot(object):
         """
         Move robot forward DISTANCE as measured by wheel encoders 
         """
-        self.updateAllSensors()
+        self.updateCurrentWheelSpeed()
         startTime = time.time()
         sampleStartTime = startTime        
         distanceLeft = distance
@@ -579,7 +496,7 @@ class Robot(object):
                     self.piRobot.stop()            
                     return 
 
-            self.updateAllSensors()
+            self.updateCurrentWheelSpeed()
             distanceSample = (time.time()-sampleStartTime)*self.getAverageSpeed()
             distanceLeft = distanceLeft - distanceSample
             sampleList.append(distanceSample)
@@ -603,18 +520,43 @@ class Robot(object):
     def printTargetPosition(self):
         return "(%0.2f, %0.2f)" % (self.targetPosition.x, self.targetPosition.y)
 
-    def rotateClock(self, degrees=90.0, speed=0.9):
-        if degrees > 360.0:
-            degrees = 360.0
-        self.updateAllSensors()
-        startDirection = self.getRobotDirection()
-        targetDirection = startDirection + degrees
-        if targetDirection > 360.0:
-            targetDirection = targetDirection - 360.0
+    def rotateToBearing(self, degrees=90.0, speed=0.9):
+        self.updateCurrentDirection()
+        targetDirection = degrees
+        direction = self.getRobotDirection()
 
-        while self.getRobotDirection() < targetDirection():
-            self.rotateRight(0.2,speed)
-        self.updateAllSensors()
+        while direction < targetDirection-5:
+            if direction < targetDirection:
+                self.rotateRight()
+                self.updateCurrentDirection()
+                direction = self.getRobotDirection()
+                print("direction = ",direction)
+                print("target direction = ", targetDirection)
+                time.sleep(0.01)
+            elif direction > targetDirection:
+                self.rotateLeft()
+                self.updateCurrentDirection()
+                direction = self.getRobotDirection()
+                print("direction = ",direction)
+                print("target direction = ", targetDirection)
+                time.sleep(0.01)
+        while direction > targetDirection+5:
+            if direction < targetDirection:
+                self.rotateRight()
+                self.updateCurrentDirection()
+                direction = self.getRobotDirection()
+                print("direction = ",direction)
+                print("target direction = ", targetDirection)
+                time.sleep(0.01)
+            elif direction > targetDirection:
+                self.rotateLeft()
+                self.updateCurrentDirection()
+                direction = self.getRobotDirection()
+                print("direction = ",direction)
+                print("target direction = ", targetDirection)
+                time.sleep(0.01)
+
+
         self.piRobot.stop()
 
     def initiateRobot(self):
@@ -653,7 +595,7 @@ class StandardRobot(Robot):
         """
         self.setRobotTargetPosition(targetPosition)
         self.setRobotTargetSpeed(speed)
-        self.updateAllSensors()
+        
 
 
 

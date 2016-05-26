@@ -2,6 +2,7 @@
 import smbus
 import time
 import math
+import numpy as np
 
 
 def returnBearing():
@@ -45,3 +46,22 @@ def returnBearing():
         bearing += 2 * math.pi
     
     return math.degrees(bearing)
+
+def saveBearing():
+    """
+    Save bearing to file
+    """
+    path = "/home/pi/robotData/"
+    fileName = "bearingData.txt"
+    filename = path + fileName
+    bearing=[]
+    timePoint = []
+    timePoint.append(time.time())
+    bearing.append(returnBearing())
+    output = np.hstack((bearing,timePoint))
+    print(output)
+    np.savetxt(filename, output, delimiter=',')
+
+while True:
+    saveBearing()
+    time.sleep(0.2)

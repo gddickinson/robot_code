@@ -1,9 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+import roslib
+import rospy
+import tf.transformations
+from geometry_msgs.msg import Twist
 import time
-import numpy as np
-
+from std_msgs.msg import Int16,Int32, Int64, Float32, String, Header, UInt64
 try:
-    from rrb3 import *
     import RPi.GPIO as GPIO
 except:
     print("Not a raspberry pi!")
@@ -17,6 +19,9 @@ try:
 except:
     print("No encoders detected!")
 
+
+#robot parameters
+axle = 0.18
 
 def getWheelSpeed():
     """
@@ -70,29 +75,34 @@ def getWheelSpeed():
     leftaverageSample = (float(leftsample1+leftsample2+leftsample3+leftsample4)/4)
     rightaverageSample = (float(rightsample1+rightsample2+rightsample3+rightsample4)/4)
     
-    #converted to cm/s
-    leftWheelSpeed = leftaverageSample * conversionFactor
-    rightWheelSpeed = rightaverageSample * conversionFactor
+    #converted to m/s
+    leftWheelSpeed = leftaverageSample * conversionFactor/100
+    rightWheelSpeed = rightaverageSample * conversionFactor/100
 
     return leftWheelSpeed,rightWheelSpeed
 
 
-def saveWheelSpeed():
-    """
-    Save wheelSpeed to file
-    """
-    path = "/home/pi/robotData/"
-    fileName = "wheelSpeedData.txt"
-    filename = path + fileName
-    leftWheel=[]
-    rightWheel = []
-    l,r = getWheelSpeed()
-    leftWheel.append(l)
-    rightWheel.append(r)
-    output = np.hstack((leftWheel,rightWheel))
-    print(output)
-    np.savetxt(filename, output, delimiter=',')
+def publisher():
+    rospy.init_node('wheelEncoder')
+    Left_Encoder = rospy.Publisher('lwheel',Int64,queue_size = 10)		            
+    Right_Encoder = rospy.Publisher('rwheel',Int64,queue_size = 10)	
 
-while True:
-    saveWheelSpeed()
-    time.sleep(0.2)
+    rate = rospy.Rate(2)
+
+    while not rospy.is_shutdown():
+
+        leftSpeed, rightSpeed = getWheelSpeed()
+        leftSpeed_str = "leftSpeed: %s" % str(leftSpeed)
+        rightSpeed_str = "rightSpeed: %s" % str(rightSpeed)
+    
+        rospy.loginfo(leftSpeed_str)
+        rospy.loginfo(rightSpeed_str)
+        Left_Encoder.publish(long(leftSpeed))
+        Right_Encoder.publish(long(rightSpeed))
+            
+        rate.sleep()    
+
+
+if __name__ == '__main__':
+    publisher()
+

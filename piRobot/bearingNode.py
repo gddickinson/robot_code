@@ -1,4 +1,11 @@
 #!/usr/bin/python
+import roslib
+import rospy
+import tf.transformations
+from geometry_msgs.msg import Twist
+import time
+from std_msgs.msg import Int16,Int32, Int64, Float32, String, Header, UInt64
+
 import smbus
 import time
 import math
@@ -47,21 +54,25 @@ def returnBearing():
     
     return math.degrees(bearing)
 
-def saveBearing():
+def publisher():
     """
-    Save bearing to file
+    publisher bearing
     """
-    path = "/home/pi/robotData/"
-    fileName = "bearingData.txt"
-    filename = path + fileName
-    bearing=[]
-    timePoint = []
-    timePoint.append(time.time())
-    bearing.append(returnBearing())
-    output = np.hstack((bearing,timePoint))
-    print(output)
-    np.savetxt(filename, output, delimiter=',')
+    rospy.init_node('bearing')
+    robotBearing = rospy.Publisher('robot_bearing',Float32,queue_size = 10)
 
-while True:
-    saveBearing()
-    time.sleep(0.2)
+    rate = rospy.Rate(2)
+
+    while not rospy.is_shutdown():
+        
+        bearing_value = returnBearing()
+        bearing_value_str = "bearing: %s" % str(bearing_value)
+        rospy.loginfo(bearing_value_str)
+        robotBearing.publish(float(bearing_value))
+    
+        rate.sleep() 
+
+
+if __name__ == '__main__':
+    
+    publisher()

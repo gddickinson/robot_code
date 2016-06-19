@@ -138,7 +138,7 @@ def callback(msg):
 
 def listener():
     rospy.init_node('cmd_vel_listener')
-    rospy.Subscriber("/turtle1/cmd_vel", Twist, callback)
+    rospy.Subscriber("/cmd_vel", Twist, callback)
     rospy.spin()
 
 if __name__ == '__main__':

@@ -68,7 +68,7 @@ def callback(msg):
 
 def piRobot_comm():
     rospy.init_node('piRobot')
-    rospy.Subscriber("/turtle1/cmd_vel", Twist, callback)
+    rospy.Subscriber("/cmd_vel", Twist, callback)
     Ultrasonic_Value = rospy.Publisher('ultrasonic_distance',Float32,queue_size = 10)
 
     rate = rospy.Rate(2)

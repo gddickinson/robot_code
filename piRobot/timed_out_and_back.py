@@ -35,7 +35,7 @@ class OutAndBack():
         rospy.on_shutdown(self.shutdown)
         
         # Publisher to control the robot's speed
-        self.cmd_vel = rospy.Publisher('turtle1/cmd_vel', Twist, queue_size=1)
+        self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         
         # How fast will we update the robot's movement?
         rate = 2
@@ -47,7 +47,7 @@ class OutAndBack():
         linear_speed = 0.3
         
         # Set the travel distance to 1.0 meters
-        goal_distance = 0.5
+        goal_distance = 1.0
         
         # How long should it take us to get there?
         linear_duration = goal_distance / linear_speed

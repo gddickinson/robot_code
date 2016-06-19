@@ -47,12 +47,12 @@ def returnBearing():
     x_out = read_word_2c(3) * scale
     y_out = read_word_2c(7) * scale
     z_out = read_word_2c(5) * scale
-    
+    #print(x_out,y_out,z_out)
     bearing  = math.atan2(y_out, x_out) 
     if (bearing < 0):
         bearing += 2 * math.pi
     
-    return math.degrees(bearing)
+    return format(math.degrees(bearing), '.2f'), format(x_out, '.2f'), format(y_out, '.2f'), format(z_out, '.2f')
 
 def publisher():
     """
@@ -60,12 +60,12 @@ def publisher():
     """
     rospy.init_node('bearing')
     robotBearing = rospy.Publisher('robot_bearing',Float32,queue_size = 10)
-
-    rate = rospy.Rate(2)
+    
+    rate = rospy.Rate(5)
 
     while not rospy.is_shutdown():
         
-        bearing_value = returnBearing()
+        bearing_value, x_value, y_value, z_value = returnBearing()
         bearing_value_str = "bearing: %s" % str(bearing_value)
         rospy.loginfo(bearing_value_str)
         robotBearing.publish(float(bearing_value))

@@ -78,16 +78,16 @@ def getWheelSpeed():
     #converted to m/s
     leftWheelSpeed = leftaverageSample * conversionFactor/100
     rightWheelSpeed = rightaverageSample * conversionFactor/100
-
-    return leftWheelSpeed,rightWheelSpeed
+    #print(leftWheelSpeed, rightWheelSpeed)
+    return format(leftWheelSpeed, '.2f'),format(rightWheelSpeed, '.2f')
 
 
 def publisher():
     rospy.init_node('wheelEncoder')
-    Left_Encoder = rospy.Publisher('lwheel',Int64,queue_size = 10)		            
-    Right_Encoder = rospy.Publisher('rwheel',Int64,queue_size = 10)	
+    Left_Encoder = rospy.Publisher('lwheel',Float32,queue_size = 10)		            
+    Right_Encoder = rospy.Publisher('rwheel',Float32,queue_size = 10)	
 
-    rate = rospy.Rate(2)
+    rate = rospy.Rate(5)
 
     while not rospy.is_shutdown():
 
@@ -97,8 +97,8 @@ def publisher():
     
         rospy.loginfo(leftSpeed_str)
         rospy.loginfo(rightSpeed_str)
-        Left_Encoder.publish(long(leftSpeed))
-        Right_Encoder.publish(long(rightSpeed))
+        Left_Encoder.publish(float(leftSpeed))
+        Right_Encoder.publish(float(rightSpeed))
             
         rate.sleep()    
 

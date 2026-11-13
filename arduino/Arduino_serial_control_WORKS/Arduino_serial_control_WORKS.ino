@@ -52,6 +52,7 @@ void loop() {
     if(current_char == command_begin){ // when we get a begin character, start reading
       readString = "";
       while(current_char != command_end){ // stop reading when we get the end character
+        while (!Serial.available()) {} // wait for the next byte (Serial.read() returns -1 until it arrives)
         current_char = Serial.read();  //gets one byte from serial buffer
         if(current_char != command_end){
           //Serial.println(current_char);

@@ -56,7 +56,7 @@ def broadcastOdometryInfo(OdometryTransformBroadcaster,OdometryPublisher,axle):
     global RWHEEL
 
     #theta = float(0.0) #needs to be updated, in radians?
-    theta = BEARING #heading
+    theta = math.radians(BEARING) #heading: /robot_bearing is published in degrees
     leftWheel = LWHEEL #leftspeed
     rightWheel = RWHEEL #rightspeed
     vx = float((rightWheel+leftWheel)/2) #velocity
@@ -84,7 +84,7 @@ def broadcastOdometryInfo(OdometryTransformBroadcaster,OdometryPublisher,axle):
                         
         return new_x,new_y
 
-    X,Y = getNewXY(X,Y,BEARING,DIRECTION,vx,time.time()-TIME_LAST_COMMAND)    
+    X,Y = getNewXY(X,Y,theta,DIRECTION,vx,time.time()-TIME_LAST_COMMAND)    
 
     quaternion = Quaternion()
     quaternion.x = 0.0 
@@ -164,19 +164,15 @@ def callback(msg):
     global TIME_LAST_COMMAND
     global DIRECTION
     TIME_LAST_COMMAND = time.time()
-    if LDirection == 1:
-        if RDirection == 1:
-            DIRECTION = 1
-        else:
-            DIRECTION = 0
-    if LDirection == -1:
-        if Rdirection == -1:
-            DIRECTION = -1
-        else:
-            DIRECTION = 0
-    if LDirection == 0:
-        if RDirection == 0:
-            DIRECTION = 0
+    # RRB3 directions: 0 = forward, 1 = reverse. Both forward -> +1, both reverse -> -1, stopped or turning -> 0
+    if LMotor == 0 and RMotor == 0:
+        DIRECTION = 0
+    elif LDirection == 0 and RDirection == 0:
+        DIRECTION = 1
+    elif LDirection == 1 and RDirection == 1:
+        DIRECTION = -1
+    else:
+        DIRECTION = 0
             
     #time.sleep(0.01)
 
@@ -234,7 +230,7 @@ def piRobot_comm():
         rospy.loginfo(x_value_str)
         xPublisher.publish(float(x_value))
         y_value = Y
-        y_value_str = "X: %s" % str(y_value)
+        y_value_str = "Y: %s" % str(y_value)
         rospy.loginfo(y_value_str)
         yPublisher.publish(float(y_value))
         

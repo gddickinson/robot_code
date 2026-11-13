@@ -3,6 +3,7 @@ import smbus
 import time
 import math
 import numpy as np
+from robot_kinematics import twos_complement, compass_bearing
 
 
 def returnBearing():
@@ -19,11 +20,7 @@ def returnBearing():
         return val
     
     def read_word_2c(adr):
-        val = read_word(adr)
-        if (val >= 0x8000):
-            return -((65535 - val) + 1)
-        else:
-            return val
+        return twos_complement(bus.read_byte_data(address, adr), bus.read_byte_data(address, adr+1))
     
     def write_byte(adr, value):
         bus.write_byte_data(address, adr, value)
@@ -41,11 +38,7 @@ def returnBearing():
     y_out = read_word_2c(7) * scale
     z_out = read_word_2c(5) * scale
     
-    bearing  = math.atan2(y_out, x_out) 
-    if (bearing < 0):
-        bearing += 2 * math.pi
-    
-    return math.degrees(bearing)
+    return compass_bearing(read_word_2c(3), read_word_2c(7), scale)
 
 def saveBearing():
     """

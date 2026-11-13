@@ -5,6 +5,7 @@ import tf.transformations
 from geometry_msgs.msg import Twist
 import serial
 import time
+from robot_kinematics import wheel_speeds, serial_commands
 
 ser = serial.Serial('/dev/ttyACM0', 19200)
 
@@ -21,18 +22,13 @@ def callback(msg):
 	#'+z' - left, '-z' - right
     speed = -1*(msg.linear.x)
     z = msg.angular.z
-    LSpeed = (speed+((axle/2)*z))
-    RSpeed = (speed-((axle/2)*z))
+    LSpeed, RSpeed = wheel_speeds(speed, z, axle)
     rospy.loginfo("Wheel Speeds, Left, Right: [%f, %f]"%(LSpeed, RSpeed))
-	#Convert to motor power
-    LMotor = LSpeed*100
-    RMotor = RSpeed*100
-    # Set wheel speeds
-	#set left
-    ser.write("$L%fZ"%(LMotor))
+	#Convert to motor power (x100) and set wheel speeds: "$L<n>Z" then "$R<n>Z"
+    left_command, right_command = serial_commands(msg.linear.x, z, axle)
+    ser.write(left_command)
     #time.sleep(0.01)
-	#set right
-    ser.write("$R%fZ"%(RMotor))
+    ser.write(right_command)
 	
 
 def listener():

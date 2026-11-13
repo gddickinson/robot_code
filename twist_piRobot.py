@@ -4,6 +4,7 @@ import rospy
 import tf.transformations
 from geometry_msgs.msg import Twist
 import time
+from robot_kinematics import wheel_speeds, rrb3_command
 
 try:
     from rrb3 import *
@@ -103,30 +104,12 @@ def callback(msg):
 	#'+z' - left, '-z' - right
     speed = msg.linear.x
     z = msg.angular.z
-    LSpeed = (speed+((axle/2)*z))
-    RSpeed = (speed-((axle/2)*z))
+    LSpeed, RSpeed = wheel_speeds(speed, z, axle)
     rospy.loginfo("Wheel Speeds, Left, Right: [%f, %f]"%(LSpeed, RSpeed))
-	#Convert to motor power
-    LMotor = LSpeed*3
-    RMotor = RSpeed*3
-    print("LMotor_power = ", LMotor)
-    print("RMotor_power = ", RMotor)
-    LDirection = 0
-    RDirection = 0
-
-    if LMotor <0:
-        LMotor = LMotor*-1
-        LDirection = 1
-
-    if RMotor <0:
-        RMotor = RMotor *-1
-        RDirection = 1
-
-    if LMotor >1:
-        LMotor = 1
-
-    if RMotor >1:
-        RMotor = 1
+	#Convert to motor power (x3), direction 1 = reverse, power capped at 1
+    LMotor, LDirection, RMotor, RDirection = rrb3_command(speed, z, axle)
+    print("LMotor_power = ", LSpeed*3)
+    print("RMotor_power = ", RSpeed*3)
 
     # Set wheel speeds
     if LMotor == 0:

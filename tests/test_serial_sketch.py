@@ -36,3 +36,10 @@ def test_every_copy_of_the_reader_waits_for_bytes():
     for p in ROOT.rglob("*.ino"):
         text = p.read_text(errors="replace")
         assert text.count(sh.WAIT_MARK) >= text.count("while(current_char != command_end)"), p
+
+
+def test_float_strings_are_truncated_clamped_and_deadbanded(run_case):
+    # atoi stops at the '.', the sketch clamps to +-255 and stops the motor for |v| <= 5
+    ev = run_case("makeblock", "fixed", "$L-400.000000Z$R-3.000000Z")
+    assert [e for e in ev if e.startswith("M1.")][-1] == "M1.run(-255)"
+    assert [e for e in ev if e.startswith("M2.")][-1] == "M2.stop()"

@@ -1,6 +1,6 @@
 // Minimal host-side stand-in for the Arduino core, just enough to compile and run the serial-control sketches on a
 // desktop for tests. Serial is fed from a scripted byte stream; every motor/servo/serial-out call is logged as an
-// event line so the JS port (web/static/serial_engine.js) can be compared with the original C++ (scripts/make_serial_fixture.py).
+// event line so the JS port (the JS port lives in the Arduino repo) can be compared with the original C++ (scripts/make_serial_fixture.py).
 #pragma once
 #include <cstdio>
 #include <cstdlib>
